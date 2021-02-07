@@ -12,6 +12,14 @@ with open("config", "r") as f:
         value = config_line[1].strip()
         config[key] = value
 
+# battery ADC is reading half the battery voltage (resistor divider)
+try:
+    adc_battery = machine.ADC(34)
+except ValueError:
+    # Ignore if the pin is already a ADC pin
+    pass
+adc_battery.atten(adc_battery.ATTN_6DB) # 0V - 2.5V
+
 wifi=network.WLAN(network.STA_IF)
 wifi.active(True)
 
@@ -39,7 +47,6 @@ tft.text(0,105, "Tool# {}".format(11), 0xFFFFFF - tft.WHITE)
 tft.text(0,125, "Probe: {}".format("open"), 0xFFFFFF - tft.WHITE)
 
 tft.text(tft.CENTER, 170, "G53", 0xFFFFFF - tft.WHITE)
-tft.text(tft.CENTER, 190, "Battery:{:.0f}%".format(95), 0xFFFFFF - tft.WHITE)
 
 tft.rect(0, 210, 134, 40, 0xFFFFFF - tft.RED, 0xFFFFFF - tft.RED)
 tft.font(tft.FONT_DejaVu18, transparent=True)
@@ -52,6 +59,8 @@ while True:
     tft.text(0,20, "Y: {:9.2f}".format(pos[1]), 0xFFFFFF - tft.WHITE)
     tft.text(0,40, "Z: {:9.2f}".format(pos[2]), 0xFFFFFF - tft.WHITE)
 
+    volt = adc_battery.read() * 2 / 1000
+    tft.text(tft.CENTER, 190, "Bat: {:.2f}V".format(volt), 0xFFFFFF - tft.WHITE)
 
 #tft.line(0, 0, 0, 239)
 #tft.line(0, 0, 134, 0)
