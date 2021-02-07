@@ -1,0 +1,7 @@
+host = 192.168.1.100
+port = 5007
+login = pendant
+password = EMC
+enable = EMCTOO
+wifi_ap = changeme
+wifi_password = changeme
