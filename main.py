@@ -3,6 +3,7 @@ import display
 import network
 import utime
 from linuxcncrsh import Linuxcncrsh
+import mfd
 
 config = dict()
 with open("config", "r") as f:
@@ -39,30 +40,31 @@ tft.set_bg(0xFFFFFF - tft.BLACK)
 
 tft.clear()
 
-tft.line(0, 60, 134, 60, 0xFFFFFF - tft.WHITE)
+info = mfd.Info(tft, adc_battery)
+jog = mfd.Jog(tft, cnc)
+mfd_pages = [jog, info]
+mfd_page = 0
 
-tft.text(0,65, "Feed:{:.0f}%".format(50), 0xFFFFFF - tft.WHITE)
-tft.text(0,85, "Spindle:{:.0f}%".format(150), 0xFFFFFF - tft.WHITE)
-tft.text(0,105, "Tool# {}".format(11), 0xFFFFFF - tft.WHITE)
-tft.text(0,125, "Probe: {}".format("open"), 0xFFFFFF - tft.WHITE)
-
-tft.text(tft.CENTER, 170, "G53", 0xFFFFFF - tft.WHITE)
-
-tft.rect(0, 210, 134, 40, 0xFFFFFF - tft.RED, 0xFFFFFF - tft.RED)
-tft.font(tft.FONT_DejaVu18, transparent=True)
-tft.text(tft.CENTER, 220, "ESTOP", 0xFFFFFF - tft.WHITE)
+left_btn = machine.Pin(35, mode=machine.Pin.IN, debounce=1000)
+right_btn = machine.Pin(0, mode=machine.Pin.IN, pull=machine.Pin.PULL_UP, debounce=1000)
 
 while True:
-    tft.font(tft.FONT_DejaVu18, transparent=False)
-    pos = cnc.get_pos("rel_act_pos")
-    tft.text(0,0, "X: {:9.2f}".format(pos[0]), 0xFFFFFF - tft.WHITE)
-    tft.text(0,20, "Y: {:9.2f}".format(pos[1]), 0xFFFFFF - tft.WHITE)
-    tft.text(0,40, "Z: {:9.2f}".format(pos[2]), 0xFFFFFF - tft.WHITE)
+    old_mfd_page = mfd_page
+    if left_btn.value() == 0:
+        # go left
+        mfd_page -= 1
+        mfd_page = mfd_page % len(mfd_pages)
+        while left_btn.value() == 0:
+            pass
+    if right_btn.value() == 0:
+        # go right
+        mfd_page +=1
+        mfd_page = mfd_page % len(mfd_pages)
+        while right_btn.value() == 0:
+            pass
 
-    volt = adc_battery.read() * 2 / 1000
-    tft.text(tft.CENTER, 190, "Bat: {:.2f}V".format(volt), 0xFFFFFF - tft.WHITE)
+    if old_mfd_page != mfd_page:
+        tft.clear()
 
-#tft.line(0, 0, 0, 239)
-#tft.line(0, 0, 134, 0)
-#tft.line(134,0,134,239)
-#tft.line(0,239,134,239)
+    mfd_pages[mfd_page].render()
+
