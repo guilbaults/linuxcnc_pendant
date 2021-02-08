@@ -21,16 +21,6 @@ except ValueError:
     pass
 adc_battery.atten(adc_battery.ATTN_6DB) # 0V - 2.5V
 
-wifi=network.WLAN(network.STA_IF)
-wifi.active(True)
-
-wifi.connect(config["wifi_ap"], config["wifi_password"])
-
-utime.sleep_ms(3000)
-
-cnc = Linuxcncrsh(config["host"], config["port"])
-cnc.login(config["login"], config["password"], config["enable"])
-
 tft = display.TFT()
 tft.init(tft.ST7789, bgr=False, miso=17, backl_pin=4,
         backl_on=1, mosi=19, clk=18, cs=5, dc=16, splash=False)
@@ -40,13 +30,29 @@ tft.set_bg(0xFFFFFF - tft.BLACK)
 
 tft.clear()
 
-info = mfd.Info(tft, adc_battery)
+wifi=network.WLAN(network.STA_IF)
+wifi.active(True)
+
+wifi.connect(config["wifi_ap"], config["wifi_password"])
+
+tft.text(tft.CENTER, 0, "Connecting", 0xFFFFFF - tft.WHITE)
+
+while wifi.isconnected() is False:
+    utime.sleep_ms(10)
+
+cnc = Linuxcncrsh(config["host"], config["port"])
+cnc.login(config["login"], config["password"], config["enable"])
+
+info = mfd.Info(tft, adc_battery, wifi)
 jog = mfd.Jog(tft, cnc)
-mfd_pages = [jog, info]
+mfd_pages = [info, jog]
 mfd_page = 0
 
 left_btn = machine.Pin(35, mode=machine.Pin.IN, debounce=1000)
 right_btn = machine.Pin(0, mode=machine.Pin.IN, pull=machine.Pin.PULL_UP, debounce=1000)
+
+tft.clear()
+mfd_pages[0].switch()
 
 while True:
     old_mfd_page = mfd_page
@@ -55,16 +61,19 @@ while True:
         mfd_page -= 1
         mfd_page = mfd_page % len(mfd_pages)
         while left_btn.value() == 0:
-            pass
+            utime.sleep_ms(10)
+
     if right_btn.value() == 0:
         # go right
         mfd_page +=1
         mfd_page = mfd_page % len(mfd_pages)
         while right_btn.value() == 0:
-            pass
+            utime.sleep_ms(10)
 
     if old_mfd_page != mfd_page:
         tft.clear()
+        mfd_pages[mfd_page].switch()
 
     mfd_pages[mfd_page].render()
+    utime.sleep_us(1)
 
