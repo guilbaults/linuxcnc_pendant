@@ -1,3 +1,5 @@
 config
 rotary.py
 rotary_irq_esp.py
+
+kicad_pendant/fab_output/*
