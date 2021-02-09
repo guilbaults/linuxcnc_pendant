@@ -38,6 +38,7 @@ class Info:
         self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
 
     def render(self):
-        volt = self.adc.read() * 2 / 1000
+        self.adc.collect(1000, len=100, wait=True)
+        volt = self.adc.collected()[3] * 2 /1000
         self.tft.text(self.tft.CENTER, 219, "Bat: {:.2f}V".format(volt), 0xFFFFFF - self.tft.WHITE)
 

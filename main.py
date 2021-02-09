@@ -19,7 +19,7 @@ try:
 except ValueError:
     # Ignore if the pin is already a ADC pin
     pass
-adc_battery.atten(adc_battery.ATTN_6DB) # 0V - 2.5V
+adc_battery.atten(adc_battery.ATTN_11DB) # 3.9 V
 
 tft = display.TFT()
 tft.init(tft.ST7789, bgr=False, miso=17, backl_pin=4,

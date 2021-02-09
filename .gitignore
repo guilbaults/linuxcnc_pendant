@@ -3,3 +3,5 @@ rotary.py
 rotary_irq_esp.py
 
 kicad_pendant/fab_output/*
+kicad_pendant/kicad_pendant.kicad_pcb-bak
+*.swp
