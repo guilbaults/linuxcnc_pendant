@@ -21,6 +21,10 @@ except ValueError:
     pass
 adc_battery.atten(adc_battery.ATTN_11DB) # 3.9 V
 
+# ldo is disabled when sleeping, enabling it now after boot
+ldo = machine.Pin(14, mode=machine.Pin.OUT)
+ldo.value(1)
+
 tft = display.TFT()
 tft.init(tft.ST7789, bgr=False, miso=17, backl_pin=4,
         backl_on=1, mosi=19, clk=18, cs=5, dc=16, splash=False)
@@ -45,7 +49,9 @@ cnc.login(config["login"], config["password"], config["enable"])
 
 info = mfd.Info(tft, adc_battery, wifi)
 jog = mfd.Jog(tft, cnc)
-mfd_pages = [info, jog]
+sleep = mfd.Sleep(tft)
+
+mfd_pages = [info, jog, sleep]
 mfd_page = 0
 
 left_btn = machine.Pin(35, mode=machine.Pin.IN, debounce=1000)

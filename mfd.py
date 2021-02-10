@@ -1,4 +1,6 @@
 import display
+import utime
+import machine
 
 class Jog:
     def __init__(self, tft, cnc):
@@ -41,4 +43,26 @@ class Info:
         self.adc.collect(1000, len=100, wait=True)
         volt = self.adc.collected()[3] * 2 /1000
         self.tft.text(self.tft.CENTER, 219, "Bat: {:.2f}V".format(volt), 0xFFFFFF - self.tft.WHITE)
+
+class Sleep:
+    """
+    Currently use 1.5mA
+    """
+    def __init__(self, tft):
+        self.tft = tft
+
+    def switch(self):
+        self.count = 6
+
+    def render(self):
+        self.count -= 1
+        self.tft.text(self.tft.CENTER, 100, "Sleep in {}".format(self.count), 0xFFFFFF - self.tft.WHITE)
+        utime.sleep(1)
+        if self.count <= 0:
+            rtc = machine.RTC()
+            rtc.wake_on_ext0(0, 0)
+            #to save battery, PWR_EN=0 to disable the LDO
+            ldo = machine.Pin(14, mode=machine.Pin.OUT)
+            ldo.value(0)
+            machine.deepsleep(0)
 
