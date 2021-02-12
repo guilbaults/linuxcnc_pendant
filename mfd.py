@@ -81,6 +81,12 @@ class Execute:
             return
 
         if self.cnc.get_onoff("machine") is True:
+            feed = self.cnc.get("feed_override").split()[1]
+            # spindle_override segfault linuxcncrsh
+            #spindle = self.cnc.get("spindle_override").split()[1]
+            self.tft.text(0,100, "Feed: {:4}".format(feed), 0xFFFFFF - self.tft.WHITE)
+            #self.tft.text(0,120, "Spindle: {}".format(spindle), 0xFFFFFF - self.tft.WHITE)
+
             status = self.cnc.get("program_status").split()[1]
             if status == "RUNNING":
                 self.tft.font(self.tft.FONT_DejaVu18, transparent=True)
