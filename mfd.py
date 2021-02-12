@@ -6,6 +6,8 @@ class Jog:
     def __init__(self, tft, cnc):
         self.tft = tft
         self.cnc = cnc
+        self.selected_axis = 0
+        self.axis_name = ["X", "Y", "Z"]
 
     def switch(self):
         self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
@@ -14,9 +16,95 @@ class Jog:
 
     def render(self):
         pos = self.cnc.get_pos("rel_act_pos")
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
         self.tft.text(0,25, "X: {:9.2f}".format(pos[0]), 0xFFFFFF - self.tft.WHITE)
         self.tft.text(0,45, "Y: {:9.2f}".format(pos[1]), 0xFFFFFF - self.tft.WHITE)
         self.tft.text(0,65, "Z: {:9.2f}".format(pos[2]), 0xFFFFFF - self.tft.WHITE)
+
+
+        self.tft.font(self.tft.FONT_Comic, transparent=False)
+        self.tft.text(self.tft.CENTER, 120, "{}".format(self.axis_name[self.selected_axis]), 0xFFFFFF - self.tft.WHITE)
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
+        self.tft.text(self.tft.CENTER, 160, "Inc: {:.2f}".format(0.01), 0xFFFFFF - self.tft.WHITE)
+        self.tft.text(self.tft.CENTER, 180, "Speed:{}".format(1000), 0xFFFFFF - self.tft.WHITE)
+        #jog_incr {0|1|2|...} <speed> <incr>
+
+class Touchoff:
+    def __init__(self, tft, cnc):
+        self.tft = tft
+        self.cnc = cnc
+        self.selected_axis = 0
+        self.axis_name = ["X", "Y", "Z"]
+
+    def switch(self):
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
+        self.tft.text(self.tft.CENTER, 0, "Touch-off", 0xFFFFFF - self.tft.WHITE)
+        self.tft.line(0, 22, 134, 22, 0xFFFFFF - self.tft.WHITE)
+
+    def render(self):
+        pos = self.cnc.get_pos("rel_act_pos")
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
+        self.tft.text(0,25, "X: {:9.2f}".format(pos[0]), 0xFFFFFF - self.tft.WHITE)
+        self.tft.text(0,45, "Y: {:9.2f}".format(pos[1]), 0xFFFFFF - self.tft.WHITE)
+        self.tft.text(0,65, "Z: {:9.2f}".format(pos[2]), 0xFFFFFF - self.tft.WHITE)
+
+        self.tft.font(self.tft.FONT_Comic, transparent=False)
+        self.tft.text(self.tft.CENTER, 120, "{}".format(self.axis_name[self.selected_axis]), 0xFFFFFF - self.tft.WHITE)
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
+        self.tft.text(self.tft.CENTER, 160, "Offset: {:.2f}".format(6.35), 0xFFFFFF - self.tft.WHITE)
+        # send touch off command, should look like G10 P0 L20 X0 Y0
+
+class Execute:
+    def __init__(self, tft, cnc):
+        self.tft = tft
+        self.cnc = cnc
+        self.last_state = None
+
+    def switch(self):
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
+        self.tft.text(self.tft.CENTER, 0, "Execute", 0xFFFFFF - self.tft.WHITE)
+        self.tft.line(0, 22, 134, 22, 0xFFFFFF - self.tft.WHITE)
+
+    def render(self):
+        pos = self.cnc.get_pos("rel_act_pos")
+        self.tft.font(self.tft.FONT_DejaVu18, transparent=False)
+        self.tft.text(0,25, "X: {:9.2f}".format(pos[0]), 0xFFFFFF - self.tft.WHITE)
+        self.tft.text(0,45, "Y: {:9.2f}".format(pos[1]), 0xFFFFFF - self.tft.WHITE)
+        self.tft.text(0,65, "Z: {:9.2f}".format(pos[2]), 0xFFFFFF - self.tft.WHITE)
+
+        if self.cnc.get_onoff("estop") is True:
+            self.tft.font(self.tft.FONT_DejaVu18, transparent=True)
+            if self.last_state != "ESTOP":
+                self.tft.rect(0, 200, 134, 239, 0xFFFFFF - self.tft.RED, 0xFFFFFF - self.tft.RED)
+                self.tft.text(self.tft.CENTER, 210, "ESTOP", 0xFFFFFF - self.tft.WHITE)
+            self.last_state = "ESTOP"
+            return
+
+        if self.cnc.get_onoff("machine") is True:
+            status = self.cnc.get("program_status").split()[1]
+            if status == "RUNNING":
+                self.tft.font(self.tft.FONT_DejaVu18, transparent=True)
+                if self.last_state != "RUNNING":
+                    self.tft.rect(0, 200, 134, 239, 0xFFFFFF - self.tft.YELLOW, 0xFFFFFF - self.tft.YELLOW)
+                    self.tft.text(self.tft.CENTER, 210, "RUNNING", 0xFFFFFF - self.tft.BLACK)
+                self.last_state = "RUNNING"
+                return
+
+            if status == "PAUSED":
+                self.tft.font(self.tft.FONT_DejaVu18, transparent=True)
+                if self.last_state != "PAUSED":
+                    self.tft.rect(0, 200, 134, 239, 0xFFFFFF - self.tft.YELLOW, 0xFFFFFF - self.tft.YELLOW)
+                    self.tft.text(self.tft.CENTER, 210, "PAUSED", 0xFFFFFF - self.tft.BLACK)
+                self.last_state = "PAUSED"
+                return
+
+            if status == "IDLE":
+                self.tft.font(self.tft.FONT_DejaVu18, transparent=True)
+                if self.last_state != "IDLE":
+                    self.tft.rect(0, 200, 134, 239, 0xFFFFFF - self.tft.GREEN, 0xFFFFFF - self.tft.GREEN)
+                    self.tft.text(self.tft.CENTER, 210, "IDLE", 0xFFFFFF - self.tft.BLACK)
+                self.last_state = "IDLE"
+                return
 
 class Info:
     def __init__(self, tft, adc, wifi):

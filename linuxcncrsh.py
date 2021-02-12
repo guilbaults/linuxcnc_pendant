@@ -39,6 +39,11 @@ class Linuxcncrsh():
         else:
             return False
 
+    def get(self, param):
+        self.s.write("get {}\r\n".format(param))
+        return self.readline()
+
+
     def set_onoff(self, param, value):
         if value is True:
             self.s.write("set {} ON\r\n".format(param))
@@ -49,7 +54,11 @@ class Linuxcncrsh():
     def get_pos(self, pos_type):
         self.s.write("get {}\r\n".format(pos_type))
         pos = self.readline().split()
-        return (float(pos[1]), float(pos[2]), float(pos[3]))
+        try:
+            return (float(pos[1]), float(pos[2]), float(pos[3]))
+        except:
+            print(pos)
+            raise
 
 if __name__ == "__main__":
     import time

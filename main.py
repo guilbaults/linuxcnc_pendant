@@ -43,15 +43,25 @@ tft.text(tft.CENTER, 0, "Connecting", 0xFFFFFF - tft.WHITE)
 
 while wifi.isconnected() is False:
     utime.sleep_ms(10)
+try:
+    cnc = Linuxcncrsh(config["host"], config["port"])
+except OSError:
+    tft.clear()
+    tft.text(tft.CENTER, 0, "LinuxCNC", 0xFFFFFF - tft.WHITE)
+    tft.text(tft.CENTER, 20, "connection failed", 0xFFFFFF - tft.WHITE)
+    tft.text(tft.CENTER, 40, "Rebooting", 0xFFFFFF - tft.WHITE)
+    utime.sleep(5)
+    machine.reset()
 
-cnc = Linuxcncrsh(config["host"], config["port"])
 cnc.login(config["login"], config["password"], config["enable"])
 
 info = mfd.Info(tft, adc_battery, wifi)
 jog = mfd.Jog(tft, cnc)
+touchoff = mfd.Touchoff(tft, cnc)
+execute = mfd.Execute(tft, cnc)
 sleep = mfd.Sleep(tft)
 
-mfd_pages = [info, jog, sleep]
+mfd_pages = [info, jog, touchoff, execute, sleep]
 mfd_page = 0
 
 left_btn = machine.Pin(35, mode=machine.Pin.IN, debounce=1000)
