@@ -5,6 +5,31 @@ import utime
 from linuxcncrsh import Linuxcncrsh
 import mfd
 
+row1 = machine.Pin(2, machine.Pin.IN, machine.Pin.PULL_UP)
+row2 = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
+row3 = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
+col1 = machine.Pin(25, machine.Pin.OUT_OD, value = 1)
+col2 = machine.Pin(32, machine.Pin.OUT_OD, value = 1)
+col3 = machine.Pin(33, machine.Pin.OUT_OD, value = 1)
+
+keyboard_rows = [row1, row2, row3]
+keyboard_cols = [col1, col2, col3]
+
+def scan_keys():
+    keys = {}
+    for col in range(3):
+        # Scan each column by setting one to gnd while floating the other ones
+        keyboard_cols[col].value(0)
+        for row in range(3):
+            if keyboard_rows[row].value() == 1:
+                # inverted logic, 1 means button is not pressed
+                v = False
+            else:
+                v = True
+            keys[(col, row)] = v
+        keyboard_cols[col].value(1)
+    return keys
+
 config = dict()
 with open("config", "r") as f:
     for line in f:
@@ -64,26 +89,25 @@ sleep = mfd.Sleep(tft)
 mfd_pages = [info, jog, touchoff, execute, sleep]
 mfd_page = 0
 
-left_btn = machine.Pin(35, mode=machine.Pin.IN, debounce=1000)
-right_btn = machine.Pin(0, mode=machine.Pin.IN, pull=machine.Pin.PULL_UP, debounce=1000)
-
 tft.clear()
 mfd_pages[0].switch()
 
 while True:
+    keys = scan_keys()
     old_mfd_page = mfd_page
-    if left_btn.value() == 0:
+
+    if keys[(0,2)]: # SW7
         # go left
         mfd_page -= 1
         mfd_page = mfd_page % len(mfd_pages)
-        while left_btn.value() == 0:
+        while scan_keys()[(0,2)]:
             utime.sleep_ms(10)
 
-    if right_btn.value() == 0:
+    if keys[(2,2)]: # SW9
         # go right
         mfd_page +=1
         mfd_page = mfd_page % len(mfd_pages)
-        while right_btn.value() == 0:
+        while scan_keys()[(2,2)]:
             utime.sleep_ms(10)
 
     if old_mfd_page != mfd_page:
