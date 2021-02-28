@@ -4,6 +4,41 @@ import network
 import utime
 from linuxcncrsh import Linuxcncrsh
 import mfd
+import micropython
+micropython.alloc_emergency_exception_buf(100)
+
+class Encoder:
+    def __init__(self, pinA, pinB):
+        self.position = 0
+        self.state = 0
+        self.pinA = machine.Pin(pinA, machine.Pin.IN, handler=self.callback, trigger=machine.Pin.IRQ_ANYEDGE, debounce=100, acttime=100)
+        self.pinB = machine.Pin(pinB, machine.Pin.IN, handler=self.callback, trigger=machine.Pin.IRQ_ANYEDGE, debounce=100, acttime=100)
+        self.state_matrix = [0,-1,1,None,1,0,None,-1,-1,None,0,1,None,1,-1,0]
+        self.count = 0
+
+    def callback(self, pin):
+        #irq_state = machine.disable_irq()
+        new = self.pinA.irqvalue() *2 + self.pinB.irqvalue()
+        out = self.state_matrix[self.state*4 + new]
+        if out is None:
+            out = 0
+        self.state = new
+        self.position += out
+        #machine.enable_irq(irq_state)
+        self.count+=1
+
+    def read(self):
+        return self.position
+    def count(self):
+        return self.count
+
+encoder = Encoder(26, 27)
+
+while True:
+    print(encoder.read(), encoder.count)
+    i = 0
+    for i in range(10000):
+        i += 1
 
 row1 = machine.Pin(2, machine.Pin.IN, machine.Pin.PULL_UP)
 row2 = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
