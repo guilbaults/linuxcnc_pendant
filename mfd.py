@@ -1,4 +1,4 @@
-import display
+import st7789 as display
 import utime
 import machine
 

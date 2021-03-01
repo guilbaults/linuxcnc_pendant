@@ -1,51 +1,21 @@
 import machine
-import display
+import st7789 as display
 import network
 import utime
-from linuxcncrsh import Linuxcncrsh
 import mfd
+from linuxcncrsh import Linuxcncrsh
+from rotary_irq_esp import RotaryIRQ
 import micropython
 micropython.alloc_emergency_exception_buf(100)
 
-class Encoder:
-    def __init__(self, pinA, pinB):
-        self.position = 0
-        self.state = 0
-        self.pinA = machine.Pin(pinA, machine.Pin.IN, handler=self.callback, trigger=machine.Pin.IRQ_ANYEDGE, debounce=100, acttime=100)
-        self.pinB = machine.Pin(pinB, machine.Pin.IN, handler=self.callback, trigger=machine.Pin.IRQ_ANYEDGE, debounce=100, acttime=100)
-        self.state_matrix = [0,-1,1,None,1,0,None,-1,-1,None,0,1,None,1,-1,0]
-        self.count = 0
-
-    def callback(self, pin):
-        #irq_state = machine.disable_irq()
-        new = self.pinA.irqvalue() *2 + self.pinB.irqvalue()
-        out = self.state_matrix[self.state*4 + new]
-        if out is None:
-            out = 0
-        self.state = new
-        self.position += out
-        #machine.enable_irq(irq_state)
-        self.count+=1
-
-    def read(self):
-        return self.position
-    def count(self):
-        return self.count
-
-encoder = Encoder(26, 27)
-
-while True:
-    print(encoder.read(), encoder.count)
-    i = 0
-    for i in range(10000):
-        i += 1
+encoder = RotaryIRQ(pin_num_clk=26, pin_num_dt=27) 
 
 row1 = machine.Pin(2, machine.Pin.IN, machine.Pin.PULL_UP)
 row2 = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
 row3 = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
-col1 = machine.Pin(25, machine.Pin.OUT_OD, value = 1)
-col2 = machine.Pin(32, machine.Pin.OUT_OD, value = 1)
-col3 = machine.Pin(33, machine.Pin.OUT_OD, value = 1)
+col1 = machine.Pin(25, machine.Pin.OPEN_DRAIN, value = 1)
+col2 = machine.Pin(32, machine.Pin.OPEN_DRAIN, value = 1)
+col3 = machine.Pin(33, machine.Pin.OPEN_DRAIN, value = 1)
 
 keyboard_rows = [row1, row2, row3]
 keyboard_cols = [col1, col2, col3]
@@ -74,32 +44,35 @@ with open("config", "r") as f:
         config[key] = value
 
 # battery ADC is reading half the battery voltage (resistor divider)
-try:
-    adc_battery = machine.ADC(34)
-except ValueError:
-    # Ignore if the pin is already a ADC pin
-    pass
-adc_battery.atten(adc_battery.ATTN_11DB) # 3.9 V
+#try:
+adc_battery = machine.ADC(machine.Pin(34))
+#except ValueError:
+#    # Ignore if the pin is already a ADC pin
+#    pass
+#adc_battery.atten(adc_battery.ATTN_11DB) # 3.9 V
 
 # ldo is disabled when sleeping, enabling it now after boot
 ldo = machine.Pin(14, mode=machine.Pin.OUT)
 ldo.value(1)
 
-tft = display.TFT()
-tft.init(tft.ST7789, bgr=False, miso=17, backl_pin=4,
-        backl_on=1, mosi=19, clk=18, cs=5, dc=16, splash=False)
-
-tft.setwin(53, 40, 53+134, 40+239)
-tft.set_bg(0xFFFFFF - tft.BLACK)
-
-tft.clear()
+tft = display.ST7789(
+    machine.SPI(2, baudrate=30000000, polarity=1, phase=1, sck=machine.Pin(18), mosi=machine.Pin(19), miso=machine.Pin(17)),
+    135,
+    240,
+    reset=machine.Pin(23, machine.Pin.OUT),
+    cs=machine.Pin(5, machine.Pin.OUT),
+    dc=machine.Pin(16, machine.Pin.OUT),
+    backlight=machine.Pin(4, machine.Pin.OUT),
+    rotation=2)
+tft.init()
 
 wifi=network.WLAN(network.STA_IF)
 wifi.active(True)
 
 wifi.connect(config["wifi_ap"], config["wifi_password"])
 
-tft.text(tft.CENTER, 0, "Connecting", 0xFFFFFF - tft.WHITE)
+import vga1_8x16 as font
+tft.text(font, "Connecting", 0, 0)
 
 while wifi.isconnected() is False:
     utime.sleep_ms(10)
@@ -124,7 +97,7 @@ sleep = mfd.Sleep(tft)
 mfd_pages = [info, jog, touchoff, execute, sleep]
 mfd_page = 0
 
-tft.clear()
+#tft.clear()
 mfd_pages[0].switch()
 
 while True:
@@ -151,4 +124,3 @@ while True:
 
     mfd_pages[mfd_page].render()
     utime.sleep_us(1)
-
