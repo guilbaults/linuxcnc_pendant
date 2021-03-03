@@ -6,6 +6,8 @@ import mfd
 from linuxcncrsh import Linuxcncrsh
 from rotary_irq_esp import RotaryIRQ
 import micropython
+import vga1_8x16 as font
+
 micropython.alloc_emergency_exception_buf(100)
 
 encoder = RotaryIRQ(pin_num_clk=26, pin_num_dt=27) 
@@ -16,6 +18,7 @@ row3 = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
 col1 = machine.Pin(25, machine.Pin.OPEN_DRAIN, value = 1)
 col2 = machine.Pin(32, machine.Pin.OPEN_DRAIN, value = 1)
 col3 = machine.Pin(33, machine.Pin.OPEN_DRAIN, value = 1)
+key_left = machine.Pin(35, machine.Pin.IN, )
 
 keyboard_rows = [row1, row2, row3]
 keyboard_cols = [col1, col2, col3]
@@ -44,12 +47,12 @@ with open("config", "r") as f:
         config[key] = value
 
 # battery ADC is reading half the battery voltage (resistor divider)
-#try:
-adc_battery = machine.ADC(machine.Pin(34))
-#except ValueError:
-#    # Ignore if the pin is already a ADC pin
-#    pass
-#adc_battery.atten(adc_battery.ATTN_11DB) # 3.9 V
+try:
+    adc_battery = machine.ADC(machine.Pin(34))
+    # Ignore if the pin is already a ADC pin
+except:
+    pass
+adc_battery.atten(adc_battery.ATTN_11DB) # 3.9 V
 
 # ldo is disabled when sleeping, enabling it now after boot
 ldo = machine.Pin(14, mode=machine.Pin.OUT)
@@ -71,7 +74,6 @@ wifi.active(True)
 
 wifi.connect(config["wifi_ap"], config["wifi_password"])
 
-import vga1_8x16 as font
 tft.text(font, "Connecting", 0, 0)
 
 while wifi.isconnected() is False:
@@ -80,9 +82,10 @@ try:
     cnc = Linuxcncrsh(config["host"], config["port"])
 except OSError:
     tft.clear()
-    tft.text(tft.CENTER, 0, "LinuxCNC", 0xFFFFFF - tft.WHITE)
-    tft.text(tft.CENTER, 20, "connection failed", 0xFFFFFF - tft.WHITE)
-    tft.text(tft.CENTER, 40, "Rebooting", 0xFFFFFF - tft.WHITE)
+    tft.text(font, "LinuxCNC", 0, 0)
+    tft.text(font, "connection failed", 0, 20)
+    tft.text(font, "Rebooting", 0, 40)
+
     utime.sleep(5)
     machine.reset()
 
@@ -97,12 +100,19 @@ sleep = mfd.Sleep(tft)
 mfd_pages = [info, jog, touchoff, execute, sleep]
 mfd_page = 0
 
-#tft.clear()
+tft.fill(display.BLACK)
 mfd_pages[0].switch()
 
 while True:
     keys = scan_keys()
     old_mfd_page = mfd_page
+
+    if key_left.value() == 0:
+        # go left
+        mfd_page -= 1
+        mfd_page = mfd_page % len(mfd_pages)
+        while key_left.value() == 0:
+            utime.sleep_ms(10)
 
     if keys[(0,2)]: # SW7
         # go left
@@ -119,7 +129,7 @@ while True:
             utime.sleep_ms(10)
 
     if old_mfd_page != mfd_page:
-        tft.clear()
+        tft.fill(display.BLACK)
         mfd_pages[mfd_page].switch()
 
     mfd_pages[mfd_page].render()
