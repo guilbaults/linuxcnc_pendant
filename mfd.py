@@ -4,17 +4,26 @@ import machine
 import vga1_8x16 as font
 
 class Jog:
-    def __init__(self, tft, cnc):
+    def __init__(self, tft, cnc, keys, encoder):
         self.tft = tft
         self.cnc = cnc
+        self.encoder = encoder
+        self.encoder_position = 0
         self.selected_axis = 0
         self.axis_name = ["X", "Y", "Z"]
 
     def switch(self):
+        self.encoder.reset()
+        self.encoder_position = self.encoder.value()
         self.tft.text(font, "Jog", 0, 0)
         self.tft.hline(0, 20, 135, display.WHITE)
 
     def render(self):
+        delta = self.encoder.value() - self.encoder_position
+        self.encoder_position = self.encoder.value()
+        if delta != 0:
+            print(delta)
+
         pos = self.cnc.get_pos("rel_act_pos")
         self.tft.text(font, "X: {:9.2f}".format(pos[0]), 0, 25)
         self.tft.text(font, "Y: {:9.2f}".format(pos[1]), 0, 45)
@@ -27,7 +36,7 @@ class Jog:
 
 
 class Touchoff:
-    def __init__(self, tft, cnc):
+    def __init__(self, tft, cnc, keys):
         self.tft = tft
         self.cnc = cnc
         self.selected_axis = 0
@@ -48,7 +57,7 @@ class Touchoff:
         # send touch off command, should look like G10 P0 L20 X0 Y0
 
 class Execute:
-    def __init__(self, tft, cnc):
+    def __init__(self, tft, cnc, keys):
         self.tft = tft
         self.cnc = cnc
         self.last_state = None
@@ -100,7 +109,7 @@ class Execute:
                 return
 
 class Info:
-    def __init__(self, tft, adc, wifi):
+    def __init__(self, tft, adc, wifi, keys):
         self.tft = tft
         self.adc = adc
         self.wifi = wifi

@@ -12,31 +12,37 @@ micropython.alloc_emergency_exception_buf(100)
 
 encoder = RotaryIRQ(pin_num_clk=26, pin_num_dt=27) 
 
-row1 = machine.Pin(2, machine.Pin.IN, machine.Pin.PULL_UP)
-row2 = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
-row3 = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
-col1 = machine.Pin(25, machine.Pin.OPEN_DRAIN, value = 1)
-col2 = machine.Pin(32, machine.Pin.OPEN_DRAIN, value = 1)
-col3 = machine.Pin(33, machine.Pin.OPEN_DRAIN, value = 1)
-key_left = machine.Pin(35, machine.Pin.IN, )
+class Keys:
+    def __init__(self):
+        row1 = machine.Pin(2, machine.Pin.IN, machine.Pin.PULL_UP)
+        row2 = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
+        row3 = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
+        col1 = machine.Pin(25, machine.Pin.OPEN_DRAIN, value = 1)
+        col2 = machine.Pin(32, machine.Pin.OPEN_DRAIN, value = 1)
+        col3 = machine.Pin(33, machine.Pin.OPEN_DRAIN, value = 1)
 
-keyboard_rows = [row1, row2, row3]
-keyboard_cols = [col1, col2, col3]
+        self.keyboard_rows = [row1, row2, row3]
+        self.keyboard_cols = [col1, col2, col3]
 
-def scan_keys():
-    keys = {}
-    for col in range(3):
-        # Scan each column by setting one to gnd while floating the other ones
-        keyboard_cols[col].value(0)
-        for row in range(3):
-            if keyboard_rows[row].value() == 1:
-                # inverted logic, 1 means button is not pressed
-                v = False
-            else:
-                v = True
-            keys[(col, row)] = v
-        keyboard_cols[col].value(1)
-    return keys
+        self.scan_keys()
+
+    def scan_keys(self):
+        keys = {}
+        for col in range(3):
+            # Scan each column by setting one to gnd while floating the other ones
+            self.keyboard_cols[col].value(0)
+            for row in range(3):
+                if self.keyboard_rows[row].value() == 1:
+                    # inverted logic, 1 means button is not pressed
+                    v = False
+                else:
+                    v = True
+                keys[(col, row)] = v
+            self.keyboard_cols[col].value(1)
+        self.keys = keys
+
+    def get_keys(self):
+        return self.keys
 
 config = dict()
 with open("config", "r") as f:
@@ -91,41 +97,40 @@ except OSError:
 
 cnc.login(config["login"], config["password"], config["enable"])
 
-info = mfd.Info(tft, adc_battery, wifi)
-jog = mfd.Jog(tft, cnc)
-touchoff = mfd.Touchoff(tft, cnc)
-execute = mfd.Execute(tft, cnc)
+keys = Keys()
+keys.scan_keys()
+
+info = mfd.Info(tft, adc_battery, wifi, keys)
+jog = mfd.Jog(tft, cnc, keys, encoder)
+touchoff = mfd.Touchoff(tft, cnc, keys)
+execute = mfd.Execute(tft, cnc, keys)
 sleep = mfd.Sleep(tft)
 
-mfd_pages = [info, jog, touchoff, execute, sleep]
+mfd_pages = [info, jog, touchoff, execute]
 mfd_page = 0
 
 tft.fill(display.BLACK)
 mfd_pages[0].switch()
 
 while True:
-    keys = scan_keys()
+    keys.scan_keys()
     old_mfd_page = mfd_page
 
-    if key_left.value() == 0:
+    if keys.get_keys()[(2,0)]:
         # go left
         mfd_page -= 1
         mfd_page = mfd_page % len(mfd_pages)
-        while key_left.value() == 0:
+
+        while keys.get_keys()[(2,0)]:
+            keys.scan_keys()
             utime.sleep_ms(10)
 
-    if keys[(0,2)]: # SW7
-        # go left
-        mfd_page -= 1
-        mfd_page = mfd_page % len(mfd_pages)
-        while scan_keys()[(0,2)]:
-            utime.sleep_ms(10)
-
-    if keys[(2,2)]: # SW9
+    if keys.get_keys()[(2,2)]:
         # go right
         mfd_page +=1
         mfd_page = mfd_page % len(mfd_pages)
-        while scan_keys()[(2,2)]:
+        while keys.get_keys()[(2,2)]:
+            keys.scan_keys()
             utime.sleep_ms(10)
 
     if old_mfd_page != mfd_page:
@@ -133,4 +138,3 @@ while True:
         mfd_pages[mfd_page].switch()
 
     mfd_pages[mfd_page].render()
-    utime.sleep_us(1)
