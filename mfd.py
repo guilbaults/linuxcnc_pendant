@@ -13,16 +13,15 @@ class Jog:
         self.axis_name = ["X", "Y", "Z"]
 
     def switch(self):
-        self.encoder.reset()
-        self.encoder_position = self.encoder.value()
+        self.encoder.clear()
+        self.encoder_position = self.encoder.count()
         self.tft.text(font, "Jog", 0, 0)
         self.tft.hline(0, 20, 135, display.WHITE)
 
     def render(self):
-        delta = self.encoder.value() - self.encoder_position
-        self.encoder_position = self.encoder.value()
-        if delta != 0:
-            print(delta)
+        delta = self.encoder.count()
+        self.encoder.clear()
+        self.encoder_position += delta
 
         pos = self.cnc.get_pos("rel_act_pos")
         self.tft.text(font, "X: {:9.2f}".format(pos[0]), 0, 25)

@@ -4,13 +4,15 @@ import network
 import utime
 import mfd
 from linuxcncrsh import Linuxcncrsh
-from rotary_irq_esp import RotaryIRQ
 import micropython
 import vga1_8x16 as font
 
 micropython.alloc_emergency_exception_buf(100)
 
-encoder = RotaryIRQ(pin_num_clk=26, pin_num_dt=27) 
+encoder = machine.DEC(
+    0,
+    machine.Pin(26, machine.Pin.IN),
+    machine.Pin(27, machine.Pin.IN))
 
 class Keys:
     def __init__(self):
