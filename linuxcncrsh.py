@@ -51,6 +51,10 @@ class Linuxcncrsh():
             self.s.write("set {} OFF\r\n".format(param))
         return self.valid()
 
+    def set(self, value):
+        self.s.write("set {}\r\n".format(value))
+        return self.valid()
+
     def get_pos(self, pos_type):
         self.s.write("get {}\r\n".format(pos_type))
         pos = self.readline().split()

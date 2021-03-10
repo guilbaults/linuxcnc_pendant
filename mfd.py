@@ -7,31 +7,49 @@ class Jog:
     def __init__(self, tft, cnc, keys, encoder):
         self.tft = tft
         self.cnc = cnc
+        self.keys = keys
         self.encoder = encoder
         self.encoder_position = 0
         self.selected_axis = 0
-        self.axis_name = ["X", "Y", "Z"]
 
     def switch(self):
         self.encoder.clear()
-        self.encoder_position = self.encoder.count()
+        self.encoder_offset = 0
         self.tft.text(font, "Jog", 0, 0)
         self.tft.hline(0, 20, 135, display.WHITE)
 
     def render(self):
-        delta = self.encoder.count()
-        self.encoder.clear()
-        self.encoder_position += delta
+        delta = self.encoder_position - (self.encoder_offset + self.encoder.count())
+        if self.encoder.count() > 10000 or self.encoder.count() < -10000:
+            # need to reset it before it overflow
+            self.encoder_offset += self.encoder.count()
+            self.encoder.clear()
+        self.encoder_position = self.encoder_offset + self.encoder.count()
 
         pos = self.cnc.get_pos("rel_act_pos")
         self.tft.text(font, "X: {:9.2f}".format(pos[0]), 0, 25)
         self.tft.text(font, "Y: {:9.2f}".format(pos[1]), 0, 45)
         self.tft.text(font, "Z: {:9.2f}".format(pos[2]), 0, 65)
 
-        self.tft.text(font, "{}".format(self.axis_name[self.selected_axis]), 0, 120)
+        if self.keys.get_keys()[(0,0)]:
+            axis = 'X'
+        elif self.keys.get_keys()[(0,1)]:
+            axis = 'Y'
+        elif self.keys.get_keys()[(0,2)]:
+            axis = 'Z'
+        else:
+            axis = None
+
+        if axis is None:
+            self.tft.text(font, " ", 0, 120)
+        else:
+            self.tft.text(font, "{}".format(axis), 0, 120)
+            if delta != 0:
+                self.cnc.set("jog_incr {} {} {}".format(
+                    axis, 1000, 0.01 * delta
+                ))
         self.tft.text(font, "Inc: {:.2f}".format(0.01), 0, 160)
         self.tft.text(font, "Speed:{}".format(1000), 0, 180)
-        #jog_incr {0|1|2|...} <speed> <incr>
 
 
 class Touchoff:
