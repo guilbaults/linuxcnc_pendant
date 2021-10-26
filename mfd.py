@@ -10,6 +10,7 @@ class Jog:
         self.keys = keys
         self.encoder = encoder
         self.encoder_position = 0
+        self.position = 0
         self.selected_axis = 0
 
     def switch(self):
@@ -18,14 +19,21 @@ class Jog:
         self.tft.text(font, "Jog", 0, 0)
         self.tft.hline(0, 20, 135, display.WHITE)
 
-    def render(self):
-        delta = self.encoder_position - (self.encoder_offset + self.encoder.count())
+    def encoder_position_usable(self):
+        # return the number of physical ticks on the jogwheel
         if self.encoder.count() > 10000 or self.encoder.count() < -10000:
             # need to reset it before it overflow
             self.encoder_offset += self.encoder.count()
             self.encoder.clear()
         self.encoder_position = self.encoder_offset + self.encoder.count()
+        return self.encoder_position//4
 
+    def delta_encoder(self):
+        delta = self.encoder_position_usable() - self.position
+        self.position += delta
+        return delta
+
+    def render(self):
         pos = self.cnc.get_pos("rel_act_pos")
         self.tft.text(font, "X: {:9.2f}".format(pos[0]), 0, 25)
         self.tft.text(font, "Y: {:9.2f}".format(pos[1]), 0, 45)
@@ -44,10 +52,12 @@ class Jog:
             self.tft.text(font, " ", 0, 120)
         else:
             self.tft.text(font, "{}".format(axis), 0, 120)
+            delta = self.delta_encoder()
             if delta != 0:
                 self.cnc.set("jog_incr {} {} {}".format(
                     axis, 1000, 0.01 * delta
                 ))
+
         self.tft.text(font, "Inc: {:.2f}".format(0.01), 0, 160)
         self.tft.text(font, "Speed:{}".format(1000), 0, 180)
 
