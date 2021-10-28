@@ -12,6 +12,11 @@ class Jog:
         self.encoder_position = 0
         self.position = 0
         self.selected_axis = 0
+        self.increment_state = 0
+        self.increments = [0.001, 0.01, 0.1, 1, 10]
+        self.speed_state = 3
+        self.speeds = [100, 1000, 10000, 20000]
+        self.key_was_pressed = False
 
     def switch(self):
         self.encoder.clear()
@@ -38,12 +43,35 @@ class Jog:
         self.tft.text(font, "X: {:9.2f}".format(pos[0]), 0, 25)
         self.tft.text(font, "Y: {:9.2f}".format(pos[1]), 0, 45)
         self.tft.text(font, "Z: {:9.2f}".format(pos[2]), 0, 65)
+        keys = self.keys.get_keys()
 
-        if self.keys.get_keys()[(0,0)]:
+        if self.key_was_pressed:
+            # prevent holding the key down
+            if keys[(1, 0)] == 0 and keys[(1, 2)] == 0:
+                # no key currently pressed
+                self.key_was_pressed = False
+        else:
+            # new key pressed
+            if keys[(1, 0)]:
+                # increase increment
+                self.increment_state += 1
+                if self.increment_state >= len(self.increments):
+                    self.increment_state = 0
+            elif keys[(1, 2)]:
+                # decrease increment
+                self.increment_state -= 1
+                if self.increment_state < 0:
+                    self.increment_state = len(self.increments) - 1
+            self.key_was_pressed = True
+
+        increment = self.increments[self.increment_state]
+        speed = self.speeds[self.speed_state]
+
+        if keys[(0,0)]:
             axis = 'X'
-        elif self.keys.get_keys()[(0,1)]:
+        elif keys[(0,1)]:
             axis = 'Y'
-        elif self.keys.get_keys()[(0,2)]:
+        elif keys[(0,2)]:
             axis = 'Z'
         else:
             axis = None
@@ -55,11 +83,13 @@ class Jog:
             delta = self.delta_encoder()
             if delta != 0:
                 self.cnc.set("jog_incr {} {} {}".format(
-                    axis, 1000, 0.01 * delta
+                    axis,
+                    speed,
+                    increment * delta
                 ))
 
-        self.tft.text(font, "Inc: {:.2f}".format(0.01), 0, 160)
-        self.tft.text(font, "Speed:{}".format(1000), 0, 180)
+        self.tft.text(font, "Inc: {:.3f}".format(increment), 0, 160)
+        self.tft.text(font, "Speed:{}".format(speed), 0, 180)
 
 
 class Touchoff:
